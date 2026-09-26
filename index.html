@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0xDEADBEEF // Security & Systems Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #020408;
+      --neon: #00ff9f;
+      --neon2: #00ffcc;
+      --accent: #66f0ff;
+      --red: #ff3d3d;
+      --orange: #ff8c00;
+      --yellow: #ffe44d;
+      --muted: #4a7a72;
+      --muted2: #1e3830;
+      --text: #c8f0e8;
+      --card-bg: rgba(0,16,12,0.7);
+      --border: rgba(0,255,159,0.07);
+      --border2: rgba(102,240,255,0.07);
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-display: 'Orbitron', monospace;
+      --font-vt: 'VT323', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-mono);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,159,0.012) 2px, rgba(0,255,159,0.012) 4px);
+      pointer-events: none;
+      z-index: 9999;
+      animation: flicker 10s infinite;
+    }
+
+    @keyframes flicker {
+      0%, 94%, 100% { opacity: 1; }
+      95% { opacity: 0.8; }
+      96% { opacity: 1; }
+      97% { opacity: 0.9; }
+    }
+
+    #grain {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+      mix-blend-mode: overlay;
+    }
+
+    #matrix-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.05;
+      pointer-events: none;
+    }
+
+    .cursor-dot {
+      position: fixed;
+      width: 8px; height: 8px;
+      background: var(--neon);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      box-shadow: 0 0 10px var(--neon), 0 0 20px var(--neon);
+      transform: translate(-50%, -50%);
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 32px;
+      background: rgba(2,4,8,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon), var(--accent), transparent);
+      opacity: 0.4;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--neon);
+      text-shadow: 0 0 10px var(--neon);
+      letter-spacing: 2px;
+      user-select: none;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lang-toggle {
+      background: rgba(0,255,159,0.04);
+      border: 1px solid var(--border);
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 5px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .lang-toggle:hover {
+      background: rgba(0,255,159,0.1);
+      box-shadow: 0 0 10px rgba(0,255,159,0.15);
+    }
+
+    /* ── HAMBURGER ── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 4px;
+      background: none;
+      border: none;
+    }
+
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--neon); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 53px; left: 0; right: 0;
+      background: rgba(2,4,8,0.97);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      z-index: 999;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mobile-menu.open { display: flex; }
+
+    /* ── HERO BANNER ── */
+    .hero-banner {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 48px 32px 24px;
+    }
+
+    .hero-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 5px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 5vw, 48px);
+      font-weight: 900;
+      color: var(--neon);
+      text-shadow: 0 0 20px rgba(0,255,159,0.5), 0 0 60px rgba(0,255,159,0.2);
+      letter-spacing: 4px;
+      margin-bottom: 8px;
+      line-height: 1.1;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+
+    .summary-bar {
+      background: rgba(0,12,8,0.8);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--neon);
+      border-radius: 4px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: #9feadd;
+      line-height: 1.8;
+      letter-spacing: 0.5px;
+      position: relative;
+    }
+
+    .summary-bar::before {
+      content: '$ cat summary.txt';
+      display: block;
+      color: var(--neon);
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+
+    /* ── SECTION HEADER ── */
+    .sec-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .sec-title {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      white-space: nowrap;
+    }
+
+    .sec-title.offensive { color: var(--red); text-shadow: 0 0 10px rgba(255,61,61,0.4); }
+    .sec-title.systems { color: var(--accent); text-shadow: 0 0 10px rgba(102,240,255,0.3); }
+    .sec-title.verify { color: var(--neon); text-shadow: 0 0 10px rgba(0,255,159,0.35); }
+
+    .sec-line {
+      flex: 1;
+      height: 1px;
+    }
+
+    .sec-line.offensive { background: linear-gradient(90deg, rgba(255,61,61,0.3), transparent); }
+    .sec-line.systems { background: linear-gradient(90deg, rgba(102,240,255,0.3), transparent); }
+    .sec-line.verify { background: linear-gradient(90deg, rgba(0,255,159,0.3), transparent); }
+
+    /* ── MAIN CONTENT ── */
+    .content {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 32px 64px;
+    }
+
+    .skills-section { margin-bottom: 48px; }
+
+    /* ── SKILL CARDS GRID ── */
+    .skill-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+
+    .skill-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .skill-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 2px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .skill-card.offensive::before { background: linear-gradient(90deg, var(--red), transparent); }
+    .skill-card.systems::before { background: linear-gradient(90deg, var(--accent), transparent); }
+
+    .skill-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    .skill-card.offensive:hover { border-color: rgba(255,61,61,0.2); }
+    .skill-card.systems:hover { border-color: rgba(102,240,255,0.15); }
+    .skill-card:hover::before { opacity: 1; }
+
+    .sk-icon {
+      font-size: 18px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .sk-title {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .skill-card.offensive .sk-title { color: var(--red); }
+    .skill-card.systems .sk-title { color: var(--accent); }
+
+    .sk-desc {
+      font-size: 12px;
+      color: #8abab0;
+      line-height: 1.75;
+    }
+
+    .sk-desc strong, .sk-tag {
+      color: var(--neon);
+    }
+
+    .sk-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .sk-tag {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
+    }
+
+    .offensive .sk-tag { background: rgba(255,61,61,0.06); border: 1px solid rgba(255,61,61,0.15); color: #ff9999; }
+    .systems .sk-tag { background: rgba(102,240,255,0.05); border: 1px solid rgba(102,240,255,0.12); color: #9de8f8; }
+
+    /* ── CTF BANNER ── */
+    .ctf-banner {
+      background: linear-gradient(135deg, rgba(0,255,159,0.04), rgba(0,0,0,0));
+      border: 1px solid rgba(0,255,159,0.1);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .ctf-badges {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ctf-badge {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--neon);
+      background: rgba(0,255,159,0.06);
+      border: 1px solid rgba(0,255,159,0.2);
+      padding: 8px 14px;
+      border-radius: 4px;
+      white-space: nowrap;
+      text-shadow: 0 0 8px var(--neon);
+      text-align: center;
+    }
+
+    .ctf-text {
+      font-size: 12px;
+      color: #8abab0;
+      line-height: 1.6;
+    }
+
+    /* ── PGP / VERIFICATION ── */
+    .pgp-card {
+      background: rgba(0,12,8,0.8);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--neon);
+      border-radius: 6px;
+      padding: 20px 24px;
+    }
+
+    .pgp-text {
+      font-size: 12px;
+      color: #8abab0;
+      line-height: 1.75;
+      margin-bottom: 16px;
+    }
+
+    .pgp-key {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 14px 16px;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #9de8f8;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 12px;
+      font-family: var(--font-mono);
+    }
+
+    .pgp-fpr {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    .pgp-fpr strong { color: var(--accent); }
+
+    /* ── ACTIONS ── */
+    .actions-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 32px;
+      padding: 20px;
+      background: rgba(0,10,8,0.5);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .act-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--neon);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 10px 18px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 1px;
+    }
+
+    .act-btn:hover {
+      background: rgba(0,255,159,0.06);
+      box-shadow: 0 0 12px rgba(0,255,159,0.15);
+      border-color: rgba(0,255,159,0.3);
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1px;
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .topbar { padding: 12px 16px; }
+      .topbar-right.desktop { display: none; }
+      .hamburger { display: flex; }
+      .hero-banner { padding: 32px 16px 20px; }
+      .content { padding: 0 16px 48px; }
+      .skill-grid { grid-template-columns: 1fr; }
+      .ctf-banner { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .hero-title { letter-spacing: 2px; }
+    }
+
+    @media (min-width: 769px) {
+      .hamburger { display: none; }
+      .mobile-menu { display: none !important; }
+    }
+
+    /* ── LANG ── */
+    [data-lang="en"] { display: none; }
+    body.en [data-lang="ru"] { display: none; }
+    body.en [data-lang="en"] { display: revert; }
+  </style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div id="grain"></div>
+<div class="cursor-dot" id="cursor"></div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="logo">0xDEADBEEF</span>
+  <div class="topbar-right desktop">
+    <button class="lang-toggle" id="langToggle">[ EN ]</button>
+  </div>
+  <button class="hamburger" id="hamburger">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <button class="lang-toggle" id="langToggleMob" style="border:1px solid var(--border); background:transparent; color:var(--neon); font-family:var(--font-mono); padding:8px; cursor:pointer; text-align:left;">[ EN ]</button>
+</div>
+
+<!-- HERO -->
+<div class="hero-banner">
+  <div class="hero-label">// SECURITY RESEARCHER · 0xDEADBEEF</div>
+  <div class="hero-title" data-lang="ru">ТЕХНИЧЕСКИЕ<br>НАВЫКИ</div>
+  <div class="hero-title" data-lang="en">TECHNICAL<br>SKILLS</div>
+  <div class="hero-sub" data-lang="ru">offensive security · systems engineering · automation · osint</div>
+  <div class="hero-sub" data-lang="en">offensive security · systems engineering · automation · osint</div>
+
+  <div class="summary-bar">
+    <span data-lang="ru">CTF: Bandit (33/33) · Natas (17) · Linux · Python · PHP · C · Bash · HTML/CSS · PostgreSQL · Redis · Wi-Fi audit · Nmap · Metasploit · Burp Suite · Wireshark · hping3 · Linpeas · Ghidra · hashcat · John the Ripper · Aircrack-ng · OSINT</span>
+    <span data-lang="en">CTF: Bandit (33/33) · Natas (17) · Linux · Python · PHP · C · Bash · HTML/CSS · PostgreSQL · Redis · Wi-Fi audit · Nmap · Metasploit · Burp Suite · Wireshark · hping3 · Linpeas · Ghidra · hashcat · John the Ripper · Aircrack-ng · OSINT</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ══ OFFENSIVE ══ -->
+  <div class="skills-section">
+    <div class="sec-header">
+      <div class="sec-title offensive">
+        <span data-lang="ru">⚔ OFFENSIVE SECURITY & ПЕНТЕСТ</span>
+        <span data-lang="en">⚔ OFFENSIVE SECURITY & PENTESTING</span>
+      </div>
+      <div class="sec-line offensive"></div>
+    </div>
+
+    <!-- CTF Banner -->
+    <div class="ctf-banner">
+      <div class="ctf-badges">
+        <div class="ctf-badge">BANDIT 33/33</div>
+        <div class="ctf-badge">NATAS 17</div>
+      </div>
+      <div class="ctf-text">
+        <span data-lang="ru"><strong style="color:var(--neon)">CTF Experience:</strong> Bandit (33/33) — полное прохождение. Natas (OverTheWire) — пройден до 17 уровня включительно, практика веб-эксплуатации на PHP (SQLi, инъекции команд, file upload → RCE и др.). Базовая работа в Linux CLI, векторы повышения привилегий, внутреннее устройство системы.</span>
+        <span data-lang="en"><strong style="color:var(--neon)">CTF Experience:</strong> Bandit (33/33) — completed. Natas (OverTheWire) — progressed through level 17, hands-on PHP web exploitation (SQLi, command injection, file upload → RCE, and more). Core Linux CLI, privilege escalation basics & system internals.</span>
+      </div>
+    </div>
+
+    <div class="skill-grid">
+
+      <!-- Ключевые компетенции -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">🎯</span>
+        <div class="sk-title" data-lang="ru">КЛЮЧЕВЫЕ КОМПЕТЕНЦИИ</div>
+        <div class="sk-title" data-lang="en">CORE COMPETENCIES</div>
+        <div class="sk-desc" data-lang="ru">Тестирование на проникновение веб-приложений и беспроводных сетей. Аудит инфраструктуры. Скрипты автоматизации атак.</div>
+        <div class="sk-desc" data-lang="en">Web & Wireless Penetration Testing. Infrastructure Assessment. Attack Automation Scripts.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Web Pentest</span>
+          <span class="sk-tag">Wireless Audit</span>
+          <span class="sk-tag">Infrastructure</span>
+        </div>
+      </div>
+
+      <!-- PoC Exploits -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">💉</span>
+        <div class="sk-title" data-lang="ru">ЭКСПЛУАТАЦИЯ & PoC ИНТЕГРАЦИЯ</div>
+        <div class="sk-title" data-lang="en">EXPLOITATION & PoC INTEGRATION</div>
+        <div class="sk-desc" data-lang="ru">Поиск, анализ и адаптация публичных эксплойтов (Proof-of-Concept) из открытых источников. Опыт интеграции модулей в фреймворки для аудита сетевого оборудования и роутеров.</div>
+        <div class="sk-desc" data-lang="en">Searching, analyzing, and adapting public PoC exploits. Experience loading custom exploits into frameworks to audit network devices and embedded systems (routers).</div>
+        <div class="sk-tags">
+          <span class="sk-tag">GitHub</span>
+          <span class="sk-tag">Exploit-DB</span>
+          <span class="sk-tag">Metasploit</span>
+          <span class="sk-tag">Routers</span>
+        </div>
+      </div>
+
+      <!-- Hash Cracking -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">🔓</span>
+        <div class="sk-title" data-lang="ru">АНАЛИЗ ХЭШЕЙ & ВЗЛОМ ПАРОЛЕЙ</div>
+        <div class="sk-title" data-lang="en">HASH ANALYSIS & PASSWORD CRACKING</div>
+        <div class="sk-desc" data-lang="ru">Практическая работа с криптографическими хэшами. Определение типов хэш-функций, атаки перебором, восстановление паролей с помощью специализированного ПО.</div>
+        <div class="sk-desc" data-lang="en">Working with cryptographic hashes. Identifying hash types and performing recovery/brute-force attacks using specialized toolsets.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">hashcat</span>
+          <span class="sk-tag">John the Ripper</span>
+          <span class="sk-tag">Brute-force</span>
+        </div>
+      </div>
+
+      <!-- Web Security -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">🕷️</span>
+        <div class="sk-title" data-lang="ru">БЕЗОПАСНОСТЬ WEB</div>
+        <div class="sk-title" data-lang="en">WEB SECURITY</div>
+        <div class="sk-desc" data-lang="ru">Поиск и эксплуатация веб-уязвимостей, включая практику на OverTheWire Natas (PHP). Практический опыт работы с прокси-инструментами и фаззерами.</div>
+        <div class="sk-desc" data-lang="en">Testing and exploitation of web vulnerabilities, including hands-on practice via OverTheWire Natas (PHP). Practical experience with interception proxies and web scanners.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">IDOR</span>
+          <span class="sk-tag">XSS</span>
+          <span class="sk-tag">CSRF</span>
+          <span class="sk-tag">HPP</span>
+          <span class="sk-tag">Injections</span>
+          <span class="sk-tag">PHP</span>
+          <span class="sk-tag">Burp Suite</span>
+          <span class="sk-tag">ffuf</span>
+          <span class="sk-tag">nikto</span>
+          <span class="sk-tag">dirb</span>
+        </div>
+      </div>
+
+      <!-- Network & Wireless -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">📡</span>
+        <div class="sk-title" data-lang="ru">АУДИТ СЕТИ & WI-FI</div>
+        <div class="sk-title" data-lang="en">NETWORK & WIRELESS AUDITING</div>
+        <div class="sk-desc" data-lang="ru">Сканирование сетей и портов. Базовые сетевые утилиты. Анализ безопасности Wi-Fi: захват хендшейков, WPS-атаки, brute-force, DoS-векторы.</div>
+        <div class="sk-desc" data-lang="en">Network discovery and port scanning. Core networking utilities. Wireless security auditing: handshake capture, WPS attacks, brute-force, DoS.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Nmap</span>
+          <span class="sk-tag">Netcat</span>
+          <span class="sk-tag">Wireshark</span>
+          <span class="sk-tag">hping3</span>
+          <span class="sk-tag">Aircrack-ng</span>
+          <span class="sk-tag">Airgeddon</span>
+          <span class="sk-tag">Reaver</span>
+          <span class="sk-tag">Bully</span>
+        </div>
+      </div>
+
+      <!-- Reverse Engineering -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">🔬</span>
+        <div class="sk-title" data-lang="ru">REVERSE ENGINEERING & PAYLOAD</div>
+        <div class="sk-title" data-lang="en">REVERSE ENGINEERING & PAYLOAD</div>
+        <div class="sk-desc" data-lang="ru">Статический анализ бинарных файлов. Концептуальное понимание и практические тесты по вшиванию полезной нагрузки — интеграция компонентов удаленного доступа в существующие пакеты приложений.</div>
+        <div class="sk-desc" data-lang="en">Static analysis of binaries. Conceptual understanding and practical compilation tests of payload embedding — integrating remote access components into existing application packages.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Ghidra</span>
+          <span class="sk-tag">Linpeas</span>
+          <span class="sk-tag">Static Analysis</span>
+        </div>
+      </div>
+
+      <!-- OSINT -->
+      <div class="skill-card offensive">
+        <span class="sk-icon">🌐</span>
+        <div class="sk-title">GEOINT & OSINT</div>
+        <div class="sk-desc" data-lang="ru">Сбор информации по открытым источникам. Извлечение метаданных. Верификация локаций по изображениям с использованием специализированных платформ и автоматизированных систем.</div>
+        <div class="sk-desc" data-lang="en">Information gathering via open sources. Metadata extraction. Image-based location verification using specialized platforms and automated tools.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Metadata</span>
+          <span class="sk-tag">Geolocation</span>
+          <span class="sk-tag">OSINT automation</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ SYSTEMS ══ -->
+  <div class="skills-section">
+    <div class="sec-header">
+      <div class="sec-title systems">
+        <span data-lang="ru">💻 СИСТЕМНАЯ ИНЖЕНЕРИЯ & ИНФРАСТРУКТУРА</span>
+        <span data-lang="en">💻 SYSTEM ENGINEERING & INFRASTRUCTURE</span>
+      </div>
+      <div class="sec-line systems"></div>
+    </div>
+
+    <div class="skill-grid">
+
+      <!-- Languages -->
+      <div class="skill-card systems">
+        <span class="sk-icon">⌨️</span>
+        <div class="sk-title" data-lang="ru">ЯЗЫКИ & АВТОМАТИЗАЦИЯ</div>
+        <div class="sk-title" data-lang="en">LANGUAGES & AUTOMATION</div>
+        <div class="sk-desc" data-lang="ru">Python (Async/Await, высоконагруженные автоматизированные системы). PHP (веб-разработка, чтение и разбор существующего кода). C (компиляция, базовое управление памятью, указатели, функции). HTML/CSS.</div>
+        <div class="sk-desc" data-lang="en">Python (Async/Await, High-Load Automation). PHP (Web Development, Reading & Debugging Existing Code). C (Compilation, Memory Basics, Pointers, Functions). HTML/CSS.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Python</span>
+          <span class="sk-tag">PHP</span>
+          <span class="sk-tag">C</span>
+          <span class="sk-tag">Bash</span>
+          <span class="sk-tag">HTML/CSS</span>
+          <span class="sk-tag">async/await</span>
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🐧</span>
+        <div class="sk-title" data-lang="ru">UNIX/LINUX ОКРУЖЕНИЕ</div>
+        <div class="sk-title" data-lang="en">UNIX/LINUX ENVIRONMENT</div>
+        <div class="sk-desc" data-lang="ru">Уверенная работа в различных дистрибутивах Linux: управление процессами и сервисами (systemd), пользователями, группами и правами доступа, базовая настройка сетевого экрана.</div>
+        <div class="sk-desc" data-lang="en">Experience operating across various Linux distributions: process & service management (systemd), users, groups and permissions, and basic network filtering.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">systemd</span>
+          <span class="sk-tag">processes</span>
+          <span class="sk-tag">users & groups</span>
+          <span class="sk-tag">chmod/chown</span>
+          <span class="sk-tag">sed/awk</span>
+          <span class="sk-tag">iptables</span>
+        </div>
+      </div>
+
+      <!-- Databases & Caching -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🗄️</span>
+        <div class="sk-title" data-lang="ru">БАЗЫ ДАННЫХ & КЭШИРОВАНИЕ</div>
+        <div class="sk-title" data-lang="en">DATABASES & CACHING</div>
+        <div class="sk-desc" data-lang="ru">Проектирование реляционных баз данных: таблицы, связи, нормализация. SQL-запросы, работа с индексами и транзакциями. Кэширование и хранение временных данных с TTL.</div>
+        <div class="sk-desc" data-lang="en">Relational database design: tables, relationships, normalization. SQL queries, indexes and transactions. Caching and temporary data storage with TTL.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">PostgreSQL</span>
+          <span class="sk-tag">SQL</span>
+          <span class="sk-tag">Indexes</span>
+          <span class="sk-tag">Transactions</span>
+          <span class="sk-tag">Redis</span>
+          <span class="sk-tag">TTL</span>
+        </div>
+      </div>
+
+      <!-- Data & Binary -->
+      <div class="skill-card systems">
+        <span class="sk-icon">📊</span>
+        <div class="sk-title" data-lang="ru">ОБРАБОТКА ДАННЫХ & БИНАРНИКОВ</div>
+        <div class="sk-title" data-lang="en">DATA & BINARY PROCESSING</div>
+        <div class="sk-desc" data-lang="ru">Регулярные выражения, фильтрация данных, форматы кодирования, базовый осмотр бинарных файлов.</div>
+        <div class="sk-desc" data-lang="en">Regular expressions, data filtering, encoding formats, and basic binary inspection.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">regex</span>
+          <span class="sk-tag">base64</span>
+          <span class="sk-tag">hex</span>
+          <span class="sk-tag">strings</span>
+          <span class="sk-tag">xxd/hexdump</span>
+        </div>
+      </div>
+
+      <!-- Custom Tools / Bots -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🤖</span>
+        <div class="sk-title" data-lang="ru">РАЗРАБОТКА ИНСТРУМЕНТАРИЯ</div>
+        <div class="sk-title" data-lang="en">CUSTOM TOOL DEVELOPMENT</div>
+        <div class="sk-desc" data-lang="ru">Создание автоматизированных скриптов и Telegram-ботов для мониторинга среды в реальном времени. Работа с Telegram Bot API, приём обновлений через Webhooks, настройка взаимодействия с сервером.</div>
+        <div class="sk-desc" data-lang="en">Building automated scripts and Telegram bots for real-time monitoring. Working with the Telegram Bot API, receiving updates via Webhooks, and configuring server-side interaction.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">Telegram Bot API</span>
+          <span class="sk-tag">Webhooks</span>
+          <span class="sk-tag">SQLite</span>
+          <span class="sk-tag">Automation</span>
+          <span class="sk-tag">Monitoring</span>
+        </div>
+      </div>
+
+      <!-- Server Administration -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🖥️</span>
+        <div class="sk-title" data-lang="ru">АДМИНИСТРИРОВАНИЕ СЕРВЕРОВ</div>
+        <div class="sk-title" data-lang="en">SERVER ADMINISTRATION</div>
+        <div class="sk-desc" data-lang="ru">Развёртывание и обслуживание VPS. Сбор, просмотр и анализ логов. Создание и восстановление резервных копий.</div>
+        <div class="sk-desc" data-lang="en">Deploying and maintaining VPS servers. Collecting, viewing and analyzing logs. Creating and restoring backups.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">VPS</span>
+          <span class="sk-tag">Logs</span>
+          <span class="sk-tag">Backup</span>
+        </div>
+      </div>
+
+      <!-- Hardware -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🔌</span>
+        <div class="sk-title" data-lang="ru">АППАРАТНАЯ БАЗА</div>
+        <div class="sk-title" data-lang="en">HARDWARE FOUNDATIONS</div>
+        <div class="sk-desc" data-lang="ru">Фундаментальное понимание устройства интегральных схем (ИС) и логики их классификации.</div>
+        <div class="sk-desc" data-lang="en">Fundamental understanding of integrated circuits (ICs) and their core operational logic.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">ICs</span>
+          <span class="sk-tag">Logic Gates</span>
+          <span class="sk-tag">Embedded</span>
+        </div>
+      </div>
+
+      <!-- Emergency Defense -->
+      <div class="skill-card systems">
+        <span class="sk-icon">🛡️</span>
+        <div class="sk-title" data-lang="ru">ЭКСТРЕННАЯ ЗАЩИТА СИСТЕМЫ</div>
+        <div class="sk-title" data-lang="en">EMERGENCY SYSTEM DEFENSE</div>
+        <div class="sk-desc" data-lang="ru">Настройка скриптов мгновенного выключения (программный вызов команды экстренного ACPI-выключения) для защиты данных при резком изменении периметра.</div>
+        <div class="sk-desc" data-lang="en">Implementing immediate, automated shutdown routines (instant software-triggered ACPI power-off) to protect system state upon abrupt perimeter changes.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">ACPI</span>
+          <span class="sk-tag">Systemd hooks</span>
+          <span class="sk-tag">Kill-switch</span>
+        </div>
+      </div>
+
+      <!-- Ethics -->
+      <div class="skill-card systems">
+        <span class="sk-icon">⚖️</span>
+        <div class="sk-title" data-lang="ru">ЭТИКА БЕЗОПАСНОСТИ</div>
+        <div class="sk-title" data-lang="en">SECURITY ETHICS</div>
+        <div class="sk-desc" data-lang="ru">Тестирование исключительно в контролируемой среде и в рамках полученных авторизаций. Документирование и ответственное раскрытие.</div>
+        <div class="sk-desc" data-lang="en">Strict adherence to Authorization-Based Testing & Controlled Environment Assessment. Documentation and responsible disclosure.</div>
+        <div class="sk-tags">
+          <span class="sk-tag">CTF only</span>
+          <span class="sk-tag">Authorized</span>
+          <span class="sk-tag">Responsible</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ IDENTITY VERIFICATION ══ -->
+  <div class="skills-section">
+    <div class="sec-header">
+      <div class="sec-title verify">
+        <span data-lang="ru">🔑 ПРОВЕРКА ПОДЛИННОСТИ</span>
+        <span data-lang="en">🔑 IDENTITY VERIFICATION</span>
+      </div>
+      <div class="sec-line verify"></div>
+    </div>
+
+    <div class="pgp-card">
+      <div class="pgp-text" data-lang="ru">Все заявления и сообщения от имени <strong style="color:var(--neon)">0xDEADBEEF</strong> подписываются приватным PGP-ключом. Импортируйте публичный ключ ниже и сверяйте подпись — если она проходит проверку, сообщение действительно от меня.</div>
+      <div class="pgp-text" data-lang="en">Statements and messages made under the alias <strong style="color:var(--neon)">0xDEADBEEF</strong> are signed with a private PGP key. Import the public key below and verify any signature against it — if it checks out, the message is genuinely mine.</div>
+      <pre class="pgp-key" id="pgpKey">-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+[ВСТАВЬТЕ СЮДА ЭКСПОРТИРОВАННЫЙ ПУБЛИЧНЫЙ КЛЮЧ]
+[PASTE YOUR EXPORTED PUBLIC KEY BLOCK HERE]
+
+-----END PGP PUBLIC KEY BLOCK-----</pre>
+      <div class="pgp-fpr"><strong data-lang="ru">Отпечаток:</strong><strong data-lang="en">Fingerprint:</strong> 105D 5285 A240 F33F 0811&nbsp;&nbsp;289E AE1F 090C 2F55 5989</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions-bar">
+    <button class="act-btn" id="copySummary" data-lang="ru">📋 Скопировать краткое</button>
+    <button class="act-btn" id="copySummary2" data-lang="en">📋 Copy summary</button>
+    <button class="act-btn" id="copyKey" data-lang="ru">🔑 Скопировать публичный ключ</button>
+    <button class="act-btn" id="copyKey2" data-lang="en">🔑 Copy public key</button>
+  </div>
+
+</div>
+
+<footer>
+  <span style="color:var(--neon)">0xME</span> · generated by hack · <span style="color:var(--accent)">0x2026</span>
+</footer>
+
+<script>
+  // Lang
+  let lang = 'ru';
+  function setLang(l) {
+    lang = l;
+    document.body.classList.toggle('en', l === 'en');
+    document.getElementById('langToggle').textContent = l === 'ru' ? '[ EN ]' : '[ RU ]';
+    const mob = document.getElementById('langToggleMob');
+    if (mob) mob.textContent = l === 'ru' ? '[ EN ]' : '[ RU ]';
+  }
+  document.getElementById('langToggle').onclick = () => setLang(lang === 'ru' ? 'en' : 'ru');
+  const mob = document.getElementById('langToggleMob');
+  if (mob) mob.onclick = () => setLang(lang === 'ru' ? 'en' : 'ru');
+
+  // Hamburger
+  document.getElementById('hamburger').onclick = () => document.getElementById('mobileMenu').classList.toggle('open');
+
+  // Copy summary
+  const summary = 'CTF: Bandit (33/33) · Natas (17) · Linux · Python · PHP · C · Bash · HTML/CSS · PostgreSQL · Redis · Wi-Fi audit · Nmap · Metasploit · Burp Suite · Wireshark · hping3 · Linpeas · Ghidra · hashcat · John the Ripper · Aircrack-ng · OSINT';
+  ['copySummary','copySummary2'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.onclick = () => {
+      navigator.clipboard.writeText(summary).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = lang === 'ru' ? '✓ Скопировано!' : '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    };
+  });
+
+  // Copy PGP public key
+  const pgpKeyEl = document.getElementById('pgpKey');
+  ['copyKey','copyKey2'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.onclick = () => {
+      navigator.clipboard.writeText(pgpKeyEl.textContent.trim()).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = lang === 'ru' ? '✓ Скопировано!' : '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    };
+  });
+
+  // Custom cursor
+  const cur = document.getElementById('cursor');
+  document.addEventListener('mousemove', e => {
+    cur.style.left = e.clientX + 'px';
+    cur.style.top = e.clientY + 'px';
+  });
+
+  // Matrix
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  const cols = Math.floor(window.innerWidth / 16);
+  const drops = Array(cols).fill(1);
+  const chars = 'ABCDEF0123456789アイウエオカ∅∃∀⊕⊗';
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(2,4,8,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff9f';
+    ctx.font = '13px Share Tech Mono, monospace';
+    drops.forEach((y, i) => {
+      const c = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(c, i * 16, y * 16);
+      if (y * 16 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    });
+  }
+  setInterval(drawMatrix, 50);
+</script>
+
+  <!-- Cloudflare Web Analytics -->
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "5175b49ed4aa400c87ab379fcc78dfef"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+
+</body>
+</html>
