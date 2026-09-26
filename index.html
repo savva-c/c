@@ -477,6 +477,24 @@
       .skill-grid { grid-template-columns: 1fr; }
       .ctf-banner { flex-direction: column; align-items: flex-start; gap: 8px; }
       .hero-title { letter-spacing: 2px; }
+
+      .ctf-badges {
+        display: inline-flex;
+        flex-direction: row;
+        gap: 0;
+        border: 1px solid rgba(0,255,159,0.2);
+        border-radius: 4px;
+        overflow: hidden;
+        background: rgba(0,255,159,0.06);
+      }
+      .ctf-badges .ctf-badge {
+        border: none;
+        background: transparent;
+        border-radius: 0;
+      }
+      .ctf-badges .ctf-badge + .ctf-badge {
+        border-left: 1px solid rgba(0,255,159,0.2);
+      }
     }
 
     @media (min-width: 769px) {
@@ -513,7 +531,7 @@
 
 <!-- HERO -->
 <div class="hero-banner">
-  <div class="hero-label">// SECURITY RESEARCHER · Savva</div>
+  <div class="hero-label">// SECURITY RESEARCHER · SAVVA</div>
   <div class="hero-title" data-lang="ru">ТЕХНИЧЕСКИЕ<br>НАВЫКИ</div>
   <div class="hero-title" data-lang="en">TECHNICAL<br>SKILLS</div>
   <div class="hero-sub" data-lang="ru">offensive security · systems engineering · automation · osint</div>
